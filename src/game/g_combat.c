@@ -197,9 +197,6 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
     killer, self->s.number, meansOfDeath, killerName,
     self->client->pers.netname, obit );
 
-  //TA: close any menus the client has open
-  G_CloseMenus( self->client->ps.clientNum );
-
   //TA: deactivate all upgrades
   for( i = UP_NONE + 1; i < UP_NUM_UPGRADES; i++ )
     BG_DeactivateUpgrade( i, self->client->ps.stats );
@@ -587,8 +584,8 @@ void player_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int
     }
   }
 
-  // remove powerups
-  memset( self->client->ps.powerups, 0, sizeof( self->client->ps.powerups ) );
+  // clear misc
+  memset( self->client->ps.misc, 0, sizeof( self->client->ps.misc ) );
 
   {
     // normal death

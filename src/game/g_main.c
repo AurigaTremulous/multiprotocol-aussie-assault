@@ -421,7 +421,7 @@ This is the only way control passes into the module.
 This must be the very first function compiled into the .q3vm file
 ================
 */
-intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, int arg4,
+Q_EXPORT intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, int arg4,
                               int arg5, int arg6, int arg7, int arg8, int arg9,
                               int arg10, int arg11 )
 {
@@ -464,22 +464,6 @@ intptr_t vmMain( int command, int arg0, int arg1, int arg2, int arg3, int arg4,
 
     case GAME_CONSOLE_COMMAND:
       return ConsoleCommand( );
-
-    case GAME_DEMO_COMMAND:
-      switch ( arg0 )
-      {
-      case DC_CLIENT_SET:
-        G_DemoSetClient( );
-        break;
-      case DC_CLIENT_REMOVE:
-        G_DemoRemoveClient( );
-        break;
-      case DC_SET_STAGE:
-        G_DemoSetStage( );
-        break;
-
-      }
-      return 0;
   }
 
   return -1;
@@ -1291,8 +1275,8 @@ void G_CalculateBuildPoints( void )
   // reset if SD was on, but now it's off
   if(!g_suddenDeath.integer && level.suddenDeath) 
   {
-    level.suddenDeath=qfalse;
-    level.suddenDeathWarning=0;
+    level.suddenDeath = qfalse;
+    level.suddenDeathWarning = 0;
     level.suddenDeathBeginTime = -1;
     if((level.time - level.startTime) < (g_suddenDeathTime.integer * 60000 ) )
       level.suddenDeathBeginTime = g_suddenDeathTime.integer * 60000;
@@ -1708,8 +1692,10 @@ Store a demo command to a demo if we are recording
 */
 void G_DemoCommand( demoCommand_t cmd, const char *string )
 {
+  /*
   if( level.demoState == DS_RECORDING )
     trap_DemoCommand( cmd, string );
+  */
 }
 
 /*
@@ -1825,8 +1811,8 @@ void MoveClientToIntermission( gentity_t *ent )
   VectorCopy( level.intermission_angle, ent->client->ps.viewangles );
   ent->client->ps.pm_type = PM_INTERMISSION;
 
-  // clean up powerup info
-  memset( ent->client->ps.powerups, 0, sizeof( ent->client->ps.powerups ) );
+  // clear misc
+  memset( ent->client->ps.misc, 0, sizeof( ent->client->ps.misc ) );
 
   ent->client->ps.eFlags = 0;
   ent->s.eFlags = 0;
@@ -3071,4 +3057,3 @@ void G_RunFrame( int levelTime )
   
   level.pausedTime=0;
 }
-

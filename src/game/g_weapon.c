@@ -38,42 +38,49 @@ void G_ForceWeaponChange( gentity_t *ent, weapon_t weapon )
 {
   int i;
 
-  if( ent )
+  if( !ent )
+    return;
+
+  if( ent->client->ps.weaponstate == WEAPON_RELOADING )
   {
-    ent->client->ps.pm_flags |= PMF_WEAPON_SWITCH;
-
-    if( weapon == WP_NONE 
-      || !BG_InventoryContainsWeapon( weapon, ent->client->ps.stats ))
-    {
-      //switch to the first non blaster weapon
-      for( i = WP_NONE + 1; i < WP_NUM_WEAPONS; i++ )
-      {
-        if( i == WP_BLASTER )
-          continue;
-
-        if( BG_InventoryContainsWeapon( i, ent->client->ps.stats ) )
-        {
-          ent->client->ps.persistant[ PERS_NEWWEAPON ] = i;
-          break;
-        }
-      }
-
-      //only got the blaster to switch to
-      if( i == WP_NUM_WEAPONS )
-        ent->client->ps.persistant[ PERS_NEWWEAPON ] = WP_BLASTER;
-    }
-    else
-      ent->client->ps.persistant[ PERS_NEWWEAPON ] = weapon;
-   
-    // Lak: The following hack has been moved to PM_BeginWeaponChange, but I'm going to
-    // redundantly leave it here as well just in case there's a case I'm forgetting
-    // because I don't want to face the gameplay consequences such an error would have
-
-    // force this here to prevent flamer effect from continuing 
-    ent->client->ps.generic1 = WPM_NOTFIRING;
-
-    ent->client->ps.weapon = ent->client->ps.persistant[ PERS_NEWWEAPON ];
+    ent->client->ps.torsoAnim = ( ( ent->client->ps.torsoAnim & ANIM_TOGGLEBIT ) ^ ANIM_TOGGLEBIT ) | TORSO_RAISE;
+    ent->client->ps.weaponTime = 250;
+    ent->client->ps.weaponstate = WEAPON_READY;
   }
+
+  ent->client->ps.pm_flags |= PMF_WEAPON_SWITCH;
+
+  if( weapon == WP_NONE
+    || !BG_InventoryContainsWeapon( weapon, ent->client->ps.stats ))
+  {
+    //switch to the first non blaster weapon
+    for( i = WP_NONE + 1; i < WP_NUM_WEAPONS; i++ )
+    {
+      if( i == WP_BLASTER )
+        continue;
+
+      if( BG_InventoryContainsWeapon( i, ent->client->ps.stats ) )
+      {
+        ent->client->ps.persistant[ PERS_NEWWEAPON ] = i;
+        break;
+      }
+    }
+
+    //only got the blaster to switch to
+    if( i == WP_NUM_WEAPONS )
+      ent->client->ps.persistant[ PERS_NEWWEAPON ] = WP_BLASTER;
+  }
+  else
+    ent->client->ps.persistant[ PERS_NEWWEAPON ] = weapon;
+
+  // Lak: The following hack has been moved to PM_BeginWeaponChange, but I'm going to
+  // redundantly leave it here as well just in case there's a case I'm forgetting
+  // because I don't want to face the gameplay consequences such an error would have
+
+  // force this here to prevent flamer effect from continuing
+  ent->client->ps.generic1 = WPM_NOTFIRING;
+
+  ent->client->ps.weapon = ent->client->ps.persistant[ PERS_NEWWEAPON ];
 }
 
 /*
@@ -87,6 +94,8 @@ void G_GiveClientMaxAmmo( gentity_t *ent, qboolean buyingEnergyAmmo )
   int       maxAmmo, maxClips;
   qboolean  weaponType, restoredAmmo = qfalse;
 
+  // GH FIXME
+
   for( i = WP_NONE + 1; i < WP_NUM_WEAPONS; i++ )
   {
     if( buyingEnergyAmmo )
@@ -97,7 +106,7 @@ void G_GiveClientMaxAmmo( gentity_t *ent, qboolean buyingEnergyAmmo )
     if( BG_InventoryContainsWeapon( i, ent->client->ps.stats ) &&
         weaponType && !BG_FindInfinteAmmoForWeapon( i ) &&
         !BG_WeaponIsFull( i, ent->client->ps.stats,
-          ent->client->ps.ammo, ent->client->ps.powerups ) )
+          ent->client->ps.ammo, ent->client->ps.clips ) )
     {
       BG_FindAmmoForWeapon( i, &maxAmmo, &maxClips );
 
@@ -109,8 +118,8 @@ void G_GiveClientMaxAmmo( gentity_t *ent, qboolean buyingEnergyAmmo )
           maxAmmo = (int)( (float)maxAmmo * BATTPACK_MODIFIER );
       }
 
-      BG_PackAmmoArray( i, ent->client->ps.ammo, ent->client->ps.powerups,
-                        maxAmmo, maxClips );
+      ent->client->ps.ammo = maxAmmo;
+      ent->client->ps.clips = maxClips;
 
       restoredAmmo = qtrue;
     }
@@ -899,9 +908,6 @@ qboolean CheckVenomAttack( gentity_t *ent )
   if( !traceEnt->takedamage )
     return qfalse;
 
-  if( !traceEnt->client && !traceEnt->s.eType == ET_BUILDABLE )
-    return qfalse;
-
   //allow bites to work against defensive buildables only
   if( traceEnt->s.eType == ET_BUILDABLE )
   {
@@ -1145,7 +1151,7 @@ static void G_UpdateZapEffect( zap_t *zap )
   effect->s.eType = ET_LEV2_ZAP_CHAIN;
   effect->classname = "lev2zapchain";
   G_SetOrigin( effect, zap->creator->s.origin );
-  effect->s.powerups = zap->creator->s.number;
+  effect->s.misc = zap->creator->s.number;
 
   effect->s.time = effect->s.time2 = effect->s.constantLight = -1;
 
@@ -1650,4 +1656,3 @@ void FireWeapon( gentity_t *ent )
       break;
   }
 }
-

@@ -26,6 +26,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //tremulous balance header
 #include "tremulous.h"
 
+#include "../qcommon/q_shared.h"
+
 // because games can change separately from the main system version, we need a
 // second version that must match between game and cgame
 #define GAME_VERSION            "base"
@@ -312,7 +314,7 @@ typedef enum
   PW_BLUEFLAG,
   PW_BALL,
 
-  PW_NUM_POWERUPS
+  PW_NUM_misc
 } powerup_t;
 
 typedef enum
@@ -1108,9 +1110,7 @@ typedef struct
 
 
 //TA:
-void      BG_UnpackAmmoArray( int weapon, int psAmmo[ ], int psAmmo2[ ], int *ammo, int *clips );
-void      BG_PackAmmoArray( int weapon, int psAmmo[ ], int psAmmo2[ ], int ammo, int clips );
-qboolean  BG_WeaponIsFull( weapon_t weapon, int stats[ ], int psAmmo[ ], int psAmmo2[ ] );
+qboolean  BG_WeaponIsFull( weapon_t weapon, int stats[ ], int ammo, int clips );
 void      BG_AddWeaponToInventory( int weapon, int stats[ ] );
 void      BG_RemoveWeaponFromInventory( int weapon, int stats[ ] );
 qboolean  BG_InventoryContainsWeapon( int weapon, int stats[ ] );
@@ -1328,4 +1328,3 @@ void BG_ClientListParse( clientList_t *list, const char *s );
 #define FFF_HUMANS         1
 #define FFF_ALIENS         2
 #define FFF_BUILDABLES     4
-

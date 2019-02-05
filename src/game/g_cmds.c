@@ -448,7 +448,8 @@ void Cmd_Give_f( gentity_t *ent )
         BG_InventoryContainsUpgrade( UP_BATTPACK, client->ps.stats ) )
       maxAmmo = (int)( (float)maxAmmo * BATTPACK_MODIFIER );
 
-    BG_PackAmmoArray( client->ps.weapon, client->ps.ammo, client->ps.powerups, maxAmmo, maxClips );
+    client->ps.ammo = maxAmmo;
+    client->ps.clips = maxClips;
   }
 }
 
@@ -1428,7 +1429,6 @@ void Cmd_CallVote_f( gentity_t *ent )
   char  name[ MAX_NETNAME ];
   char *arg1plus;
   char *arg2plus;
-  char nullstring[] = "";
   char  message[ MAX_STRING_CHARS ];
   char targetname[ MAX_NAME_LENGTH] = "";
   char reason[ MAX_STRING_CHARS ] = "";
@@ -1784,7 +1784,7 @@ void Cmd_CallVote_f( gentity_t *ent )
         trap_SendServerCommand( ent-g_entities, "print \"callvote: You forgot to specify what people should vote on.\n\"" );
         return;
       }
-      Com_sprintf( level.voteString, sizeof( level.voteString ), nullstring);
+      level.voteString[0] = '\0';
       Com_sprintf( level.voteDisplayString,
           sizeof( level.voteDisplayString ), "[Poll] \'%s^7\'", arg2plus );
    }
@@ -2030,7 +2030,6 @@ void Cmd_CallTeamVote_f( gentity_t *ent )
   char  arg2[ MAX_STRING_TOKENS ];
   int   clientNum = -1;
   char  name[ MAX_NETNAME ];
-  char nullstring[] = "";
   char  message[ MAX_STRING_CHARS ];
   char targetname[ MAX_NAME_LENGTH] = "";
   char reason[ MAX_STRING_CHARS ] = "";
@@ -2343,7 +2342,7 @@ void Cmd_CallTeamVote_f( gentity_t *ent )
       trap_SendServerCommand( ent-g_entities, "print \"callteamvote: You forgot to specify what people should vote on.\n\"" );
       return;
     }
-    Com_sprintf( level.teamVoteString[ cs_offset ], sizeof( level.teamVoteString[ cs_offset ] ), nullstring );
+    level.teamVoteString[ cs_offset ][0] = '\0';
     Com_sprintf( level.teamVoteDisplayString[ cs_offset ],
         sizeof( level.voteDisplayString ), "[Poll] \'%s^7\'", arg2plus );
   }
@@ -2629,6 +2628,8 @@ void Cmd_Class_f( gentity_t *ent )
   int       num;
   gentity_t *other;
   qboolean  humanNear = qfalse;
+  int       oldBoostTime = -1;
+  vec3_t    oldVel;
 
 
   clientNum = ent->client - level.clients;
@@ -2810,7 +2811,20 @@ void Cmd_Class_f( gentity_t *ent )
           ent->client->pers.classSelection = newClass;
           ClientUserinfoChanged( clientNum, qfalse );
           VectorCopy( infestOrigin, ent->s.pos.trBase );
+          VectorCopy( ent->client->ps.velocity, oldVel );
+
+          if( ent->client->ps.stats[ STAT_STATE ] & SS_BOOSTED ) {
+            oldBoostTime = ent->client->lastBoostedTime;
+          }
+
           ClientSpawn( ent, ent, ent->s.pos.trBase, ent->s.apos.trBase );
+
+          VectorCopy( oldVel, ent->client->ps.velocity );
+          if( oldBoostTime > 0 )
+          {
+            ent->client->lastBoostedTime = oldBoostTime;
+            ent->client->ps.stats[ STAT_STATE ] |= SS_BOOSTED;
+          }
           return;
         }
         else
@@ -3376,8 +3390,8 @@ void Cmd_Buy_f( gentity_t *ent )
         BG_InventoryContainsUpgrade( UP_BATTPACK, ent->client->ps.stats ) )
       maxAmmo = (int)( (float)maxAmmo * BATTPACK_MODIFIER );
 
-    BG_PackAmmoArray( weapon, ent->client->ps.ammo, ent->client->ps.powerups,
-                      maxAmmo, maxClips );
+    ent->client->ps.ammo = maxAmmo;
+    ent->client->ps.clips = maxClips;
 
     G_ForceWeaponChange( ent, weapon );
 
@@ -3591,7 +3605,9 @@ void Cmd_Sell_f( gentity_t *ent )
                 BG_FindUsesEnergyForWeapon( j ) &&
                 !BG_FindInfinteAmmoForWeapon( j ) )
             {
-              BG_PackAmmoArray( j, ent->client->ps.ammo, ent->client->ps.powerups, 0, 0 );
+              // GH FIXME
+              ent->client->ps.ammo = 0;
+              ent->client->ps.clips = 0;
             }
           }
         }
@@ -4191,7 +4207,7 @@ void Cmd_AllStats_f( gentity_t *ent )
           tmpent->client->pers.statscounters.ffdmgdone     ? tmpent->client->pers.statscounters.ffdmgdone : 0,
           Teamcolor,
           tmpent->client->pers.statscounters.structsbuilt  ? tmpent->client->pers.statscounters.structsbuilt : 0,
-          tmpent->client->pers.netname                     ? tmpent->client->pers.netname : "Unknown" ) );
+          tmpent->client->pers.netname[0]                     ? tmpent->client->pers.netname : "Unknown" ) );
 
         NumResults++;
       }
@@ -4943,7 +4959,8 @@ static void Cmd_Ignore_f( gentity_t *ent )
        if( level.clients[ i ].pers.connected == CON_CONNECTED &&
             ent->client != level.clients + i &&
             level.clients[ i ].pers.teamSelection ==
-            ent->client->pers.teamSelection ) {
+            ent->client->pers.teamSelection &&
+            level.clients[ i ].pers.credit < max ) {
          new_credits = level.clients[ i ].pers.credit + portion;
          amounts[ i ] = portion;
          totals[ i ] += portion;
@@ -5492,7 +5509,7 @@ void G_PrivateMessage( gentity_t *ent )
       Q_strcat( str, sizeof( str ), "^7, " );
     Q_strcat( str, sizeof( str ), tmpent->client->pers.netname );
     trap_SendServerCommand( pids[ i ], va(
-      "chat \"%s^%c -> ^7%s^7: (%d recipients): ^%c%s^7\" %i",
+      "chat \"%s^%c -> ^7%s^7: (%d recipients): ^%c%s^7\" %ld",
       ( ent ) ? ent->client->pers.netname : "console",
       color,
       allname,

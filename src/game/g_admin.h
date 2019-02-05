@@ -23,6 +23,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef _G_ADMIN_H
 #define _G_ADMIN_H
 
+#include "../qcommon/q_shared.h"
+
 #define AP(x) trap_SendServerCommand(-1, x)
 #define CP(x) trap_SendServerCommand(ent-g_entities, x)
 #define CPx(x, y) trap_SendServerCommand(x, y)
@@ -254,5 +256,6 @@ void G_admin_buffer_end( gentity_t *ent );
 void G_admin_duration( int secs, char *duration, int dursize );
 void G_admin_cleanup( void );
 void G_admin_namelog_cleanup( void );
+void admin_writeconfig( void );
 
 #endif /* ifndef _G_ADMIN_H */

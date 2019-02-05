@@ -11,16 +11,11 @@
 #define YYAND ;
 #define YYPTR char *
 #endif
-#ifndef lint
-YYCONST static char yysccsid[] = "@(#)yaccpar	1.8 (Berkeley +Cygnus.28) 01/20/91";
-#endif
 #define YYBYACC 1
 #ifndef YYDONT_INCLUDE_STDIO
 #include <stdio.h>
 #endif
-//#ifdef __cplusplus TA <tim@ngus.net> stdlib.h applies to C too
 #include <stdlib.h> /* for malloc/realloc/free */
-//#endif
 #line 2 "lburg/gram.y"
 #include <stdio.h>
 #include "lburg.h"

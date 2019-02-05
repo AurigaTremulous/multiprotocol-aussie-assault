@@ -1,0 +1,20 @@
+multiprotocol-aussie-assault
+==========================
+
+This file is packaged with source, binaries, and/or assets for the
+multiprotocol Aussie Assault's QVM.  See the accompanying COPYING file for details.
+
+This modification uses Ausaie Assault QVM game module and Lakitu7's r181 cgame and
+ui modules.  Modifications are primarily for compatibility with the Tremulous 1.3 server,
+which can be found here:
+
+    https://github.com/GrangerHub/tremulous
+
+Questions, comments, and/or source code requests can be made on the GrangerHub
+forum:
+    
+    http://forum.grangerhub.com/
+
+The source code for this game module can be found at:
+
+    https://github.com/GrangerHub/multiprotocol-aussie-assault

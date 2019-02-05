@@ -72,6 +72,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #endif
 #endif
 
+#if (defined _MSC_VER)
+#define Q_EXPORT __declspec(dllexport)
+#elif (defined __SUNPRO_C)
+#define Q_EXPORT __global
+#elif ((__GNUC__ >= 3) && (!__EMX__) && (!sun))
+#define Q_EXPORT __attribute__((visibility("default")))
+#else
+#define Q_EXPORT
+#endif
+
 /**********************************************************************
   VM Considerations
 
@@ -183,7 +193,7 @@ typedef int		clipHandle_t;
 #define	MAX_NAME_LENGTH			32		// max length of a client name
 #define	MAX_HOSTNAME_LENGTH	80		// max length of a host name
 
-#define	MAX_SAY_TEXT	150
+#define	MAX_SAY_TEXT	800
 
 // paramters for command buffer stuffing
 typedef enum {
@@ -262,7 +272,7 @@ void *Hunk_AllocDebug( int size, ha_pref preference, char *label, char *file, in
 void *Hunk_Alloc( int size, ha_pref preference );
 #endif
 
-#if defined(__GNUC__) && !defined(__MINGW32__) && !defined(MACOS_X)
+#if defined(__GNUC__) && !defined(__MINGW32__) && !defined(__APPLE__)
 // https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=371
 // custom Snd_Memset implementation for glibc memset bug workaround
 void Snd_Memset (void* dest, const int val, const size_t count);
@@ -1013,7 +1023,7 @@ typedef struct {
 // bit field limits
 #define	MAX_STATS				16
 #define	MAX_PERSISTANT			16
-#define	MAX_POWERUPS			16
+#define	MAX_MISC    			16
 #define	MAX_WEAPONS				16		
 
 #define	MAX_PS_EVENTS			2
@@ -1053,7 +1063,11 @@ typedef struct playerState_s {
 	int			torsoTimer;		// don't change low priority animations until this runs out
 	int			torsoAnim;		// mask off ANIM_TOGGLEBIT
 
-	int			movementDir;	// a number 0 to 7 that represents the reletive angle
+	int			tauntTimer;		// don't allow another taunt until this runs out
+
+	int			weaponAnim;		// mask off ANIM_TOGGLEBIT
+
+	int			movementDir;	// a number 0 to 7 that represents the relative angle
 								// of movement to the view angle (axial and diagonals)
 								// when at rest, the value will remain unchanged
 								// used to twist the legs during strafing
@@ -1085,8 +1099,9 @@ typedef struct playerState_s {
 
 	int			stats[MAX_STATS];
 	int			persistant[MAX_PERSISTANT];	// stats that aren't cleared on death
-	int			powerups[MAX_POWERUPS];	// level.time that the powerup runs out
-	int			ammo[MAX_WEAPONS];
+	int			misc[MAX_MISC];	// misc data
+	int			ammo;			// ammo held
+	int			clips;			// clips held
 
 	int			generic1;
 	int			loopSound;
@@ -1094,7 +1109,7 @@ typedef struct playerState_s {
 
 	// not communicated over the net at all
 	int			ping;			// server to game info for scoreboard
-	int			pmove_framecount;	// FIXME: don't transmit over the network
+	int			pmove_framecount;
 	int			jumppad_frame;
 	int			entityEventSequence;
 } playerState_t;
@@ -1204,10 +1219,11 @@ typedef struct entityState_s {
 	int		eventParm;
 
 	// for players
-	int		powerups;		// bit flags
+	int		misc;			// bit flags
 	int		weapon;			// determines weapon and flash model, etc
 	int		legsAnim;		// mask off ANIM_TOGGLEBIT
 	int		torsoAnim;		// mask off ANIM_TOGGLEBIT
+	int		weaponAnim;		// mask off ANIM_TOGGLEBIT
 
 	int		generic1;
 } entityState_t;
@@ -1275,9 +1291,9 @@ typedef struct qtime_s {
 
 // server browser sources
 // TTimo: AS_MPLAYER is no longer used
-#define AS_GLOBAL			2
+#define AS_GLOBAL			0
 #define AS_MPLAYER		1
-#define AS_LOCAL			0
+#define AS_LOCAL			2
 #define AS_FAVORITES	3
 
 
@@ -1320,6 +1336,7 @@ typedef enum {
 #define SAY_TELL	2
 #define SAY_ACTION      3
 #define SAY_ACTION_T    4
-#define SAY_ADMINS    5
+#define SAY_ADMINS      5
+#define SAY_HADMINS     6
 
 #endif	// __Q_SHARED_H

@@ -586,7 +586,7 @@ void BodySink( gentity_t *ent )
     ent->active = qtrue;
 
     //sinking bodies can't be infested
-    ent->killedBy = ent->s.powerups = MAX_CLIENTS;
+    ent->killedBy = ent->s.misc = MAX_CLIENTS;
     ent->timestamp = level.time;
   }
 
@@ -664,7 +664,7 @@ void SpawnCorpse( gentity_t *ent )
   else
     body->classname = "alienCorpse";
 
-  body->s.powerups = MAX_CLIENTS;
+  body->s.misc = MAX_CLIENTS;
 
   body->think = BodySink;
   body->nextthink = level.time + 20000;
@@ -1012,7 +1012,7 @@ void ClientUserinfoChanged( int clientNum, qboolean forceName )
   char      c1[ MAX_INFO_STRING ];
   char      c2[ MAX_INFO_STRING ];
   char      userinfo[ MAX_INFO_STRING ];
-  team_t    team;
+  pTeam_t    team;
 
   ent = g_entities + clientNum;
   client = ent->client;
@@ -1327,7 +1327,7 @@ char *ClientConnect( int clientNum, qboolean firstTime )
     return "You are banned from this server.";
 
   // check for valid IP address
-  if( ip[0] == 0 || strlen(ip) < 7 )
+  if( (ip[0] == 0 || strlen(ip) < 7) && strcmp( Info_ValueForKey( userinfo, "ip" ), "localhost" ) )
   {
     G_AdminsPrintf( "Connect from client with invalid IP: '%s' NAME: '%s^7'\n",
       ip, Info_ValueForKey( userinfo, "name" ) );
@@ -1504,7 +1504,7 @@ void ClientBegin( int clientNum )
     {
       trap_SendServerCommand( client->ps.clientNum, va( "print \"^1Your client is out of date. Updating your client will allow you to "
         "become an admin on servers and download maps much more quickly. Please replace your client executable with the one "
-        "at ^2http://trem.tjw.org/backport/^1 and reconnect. \n\"" ) );
+        "at ^2https://github.com/GrangerHub/tremulous/releases^1 and reconnect. \n\"" ) );
     }
   }
 
@@ -1692,7 +1692,8 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, vec3_t origin, vec3_t angles
 
   BG_FindAmmoForWeapon( weapon, &maxAmmo, &maxClips );
   BG_AddWeaponToInventory( weapon, client->ps.stats );
-  BG_PackAmmoArray( weapon, client->ps.ammo, client->ps.powerups, maxAmmo, maxClips );
+  client->ps.ammo = maxAmmo;
+  client->ps.clips = maxClips;
 
   ent->client->ps.stats[ STAT_PCLASS ] = ent->client->pers.classSelection;
   ent->client->ps.stats[ STAT_PTEAM ] = ent->client->pers.teamSelection;

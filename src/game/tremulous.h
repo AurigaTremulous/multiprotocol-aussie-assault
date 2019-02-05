@@ -237,6 +237,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define BARRICADE_REGEN             14
 #define BARRICADE_SPLASHDAMAGE      50
 #define BARRICADE_SPLASHRADIUS      50
+#define BARRICADE_SHRINKPROP        0.25f
+#define BARRICADE_SHRINKTIMEOUT     500
 #define BARRICADE_CREEPSIZE         120
 
 #define BOOSTER_BP                  12
@@ -246,7 +248,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define BOOSTER_SPLASHDAMAGE        50
 #define BOOSTER_SPLASHRADIUS        50
 #define BOOSTER_CREEPSIZE           120
-#define BOOSTER_INTERVAL            30000 //time in msec between uses (per player)
 #define BOOSTER_REGEN_MOD           2.0f
 #define BOOST_TIME                  30000
 
@@ -585,6 +586,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define STAMINA_STOP_RESTORE        25
 #define STAMINA_WALK_RESTORE        15
+#define STAMINA_MEDISTAT_RESTORE    30 // stacked on STOP or WALK
 #define STAMINA_SPRINT_TAKE         8
 #define STAMINA_LARMOUR_TAKE        4
 

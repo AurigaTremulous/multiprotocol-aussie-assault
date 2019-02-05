@@ -29,7 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 static intptr_t (QDECL *syscall)( intptr_t arg, ... ) = (intptr_t (QDECL *)( intptr_t, ...))-1;
 
 
-void dllEntry( intptr_t (QDECL *syscallptr)( intptr_t arg,... ) )
+Q_EXPORT void dllEntry( intptr_t (QDECL *syscallptr)( intptr_t arg,... ) )
 {
   syscall = syscallptr;
 }
@@ -257,12 +257,6 @@ void trap_SendGameStat( const char *data )
   return;
 }
 
-void trap_DemoCommand( demoCommand_t cmd, const char *string )
-{
-  syscall( G_DEMO_COMMAND, cmd, string );
-  return;
-}
-
 int trap_Parse_AddGlobalDefine( char *define )
 {
   return syscall( G_PARSE_ADD_GLOBAL_DEFINE, define );
@@ -287,4 +281,3 @@ int trap_Parse_SourceFileAndLine( int handle, char *filename, int *line )
 {
   return syscall( G_PARSE_SOURCE_FILE_AND_LINE, handle, filename, line );
 }
-

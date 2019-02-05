@@ -545,7 +545,7 @@ static void admin_writeconfig_int( int v, fileHandle_t f )
   trap_FS_Write( "\n", 1, f );
 }
 
-static void admin_writeconfig( void )
+void admin_writeconfig( void )
 {
   fileHandle_t f;
   int len, i;
@@ -1016,7 +1016,7 @@ static int admin_listadmins( gentity_t *ent, int start, char *search, int minlev
       if( g_admin_levels[ j ]->level == l )
       {
         G_DecolorString( g_admin_levels[ j ]->name, lname );
-        Com_sprintf( lname_fmt, sizeof( lname_fmt ), "%%%is",
+        Com_sprintf( lname_fmt, sizeof( lname_fmt ), "%%%lus",
           ( admin_level_maxname + strlen( g_admin_levels[ j ]->name )
             - strlen( lname ) ) );
         Com_sprintf( lname, sizeof( lname ), lname_fmt,
@@ -1080,7 +1080,7 @@ static int admin_listadmins( gentity_t *ent, int start, char *search, int minlev
        if( g_admin_levels[ j ]->level == g_admin_admins[ i ]->level )
        {
          G_DecolorString( g_admin_levels[ j ]->name, lname );
-         Com_sprintf( lname_fmt, sizeof( lname_fmt ), "%%%is",
+         Com_sprintf( lname_fmt, sizeof( lname_fmt ), "%%%lus",
            ( admin_level_maxname + strlen( g_admin_levels[ j ]->name )
              - strlen( lname ) ) );
          Com_sprintf( lname, sizeof( lname ), lname_fmt,
@@ -1474,7 +1474,7 @@ void G_admin_namelog_update( gclient_t *client, qboolean disconnect )
     return;
   }
   namelog = G_Alloc( sizeof( g_admin_namelog_t ) );
-  memset( namelog, 0, sizeof( namelog ) );
+  memset( namelog, 0, sizeof( *namelog ) );
   for( j = 0; j < MAX_ADMIN_NAMELOG_NAMES ; j++ )
     namelog->name[ j ][ 0 ] = '\0';
   Q_strncpyz( namelog->ip, client->pers.ip, sizeof( namelog->ip ) );
@@ -2931,7 +2931,6 @@ qboolean G_admin_mute( gentity_t *ent, int skiparg )
   char command[ MAX_ADMIN_CMD_LEN ], *cmd;
   gentity_t *vic;
   char secs[ 7 ];
-  qboolean usageDuration = qfalse;
   int seconds = 0;
 
   G_SayArgv( skiparg, command, sizeof( command ) );
@@ -3269,7 +3268,7 @@ qboolean G_admin_listadmins( gentity_t *ent, int skiparg )
   if( G_SayArgc() == 3 + skiparg )
   {
     G_SayArgv( 2 + skiparg, s, sizeof( s ) );
-    if( ( s[ 0 ] >= '0' || s[ 0 ] == '-' && s[ 1 ] >= '0' ) && s[ 0 ] <= '9' )
+    if( ( s[ 0 ] >= '0' || (s[ 0 ] == '-' && s[ 1 ] >= '0') ) && s[ 0 ] <= '9' )
     {
       minlevel = atoi( s );
       if( minlevel < -9 ) 
@@ -3300,7 +3299,7 @@ qboolean G_admin_listadmins( gentity_t *ent, int skiparg )
     G_SayArgv( 1 + skiparg, s, sizeof( s ) );
     for( i = 0; i < sizeof( s ) && s[ i ]; i++ )
     {
-      if( ( s[ 0 ] >= '0' || s[ 0 ] == '-' && s[ 1 ] >= '0' ) && s[ 0 ] <= '9' )
+      if( ( s[ 0 ] >= '0' || (s[ 0 ] == '-' && s[ 1 ] >= '0') ) && s[ 0 ] <= '9' )
         continue;
       numeric = qfalse; 
     }
@@ -3507,7 +3506,7 @@ qboolean G_admin_listplayers( gentity_t *ent, int skiparg )
         if( *lname )
         {
           G_DecolorString( lname, lname2 );
-          Com_sprintf( lname_fmt, sizeof( lname_fmt ), "%%%is",
+          Com_sprintf( lname_fmt, sizeof( lname_fmt ), "%%%lus",
             ( admin_level_maxname + strlen( lname ) - strlen( lname2 ) ) );
           Com_sprintf( lname2, sizeof( lname2 ), lname_fmt, lname );
         }
@@ -3639,9 +3638,6 @@ int G_listrotation_mapstatus( int i, int j, char *mapName )
 qboolean G_admin_listrotation( gentity_t *ent, int skiparg )
 {
   int i, j, k, statusColor;
-  char currentMap, nextMap;
-  char *status = '\0';
-  qboolean rotationFound = qfalse;
   extern mapRotations_t mapRotations;
 
   // Check for an active map rotation
@@ -3893,12 +3889,12 @@ qboolean G_admin_showbans( gentity_t *ent, int skiparg )
     G_admin_duration( secs, duration, sizeof( duration ) );
 
     G_DecolorString( g_admin_bans[ i ]->name, n1 );
-    Com_sprintf( name_fmt, sizeof( name_fmt ), "%%%is",
+    Com_sprintf( name_fmt, sizeof( name_fmt ), "%%%lus",
       ( max_name + strlen( g_admin_bans[ i ]->name ) - strlen( n1 ) ) );
     Com_sprintf( n1, sizeof( n1 ), name_fmt, g_admin_bans[ i ]->name ); 
 
     G_DecolorString( g_admin_bans[ i ]->banner, n2 );
-    Com_sprintf( banner_fmt, sizeof( banner_fmt ), "%%%is",
+    Com_sprintf( banner_fmt, sizeof( banner_fmt ), "%%%lus",
       ( max_banner + strlen( g_admin_bans[ i ]->banner ) - strlen( n2 ) ) );
     Com_sprintf( n2, sizeof( n2 ), banner_fmt, g_admin_bans[ i ]->banner ); 
 
@@ -4050,14 +4046,14 @@ qboolean G_admin_help( gentity_t *ent, int skiparg )
         count++;
       }
 
-      if ( ent->client->pers.designatedBuilder )
+      if ( ent && ent->client->pers.designatedBuilder )
       {
         if( count > commandsPerLine && ( count % commandsPerLine ) == 1 ) ADMBP( "\n" );
         ADMBP( va( "^5/%-12s", "protect" ) );
         count++;
       }
 
-      if ( ent->client->pers.designatedBuilder )
+      if ( ent && ent->client->pers.designatedBuilder )
       {
         if( count > commandsPerLine && ( count % commandsPerLine ) == 1 ) ADMBP( "\n" );
         ADMBP( va( "^5/%-12s", "resign" ) );
@@ -4127,7 +4123,7 @@ qboolean G_admin_help( gentity_t *ent, int skiparg )
         ADMBP( va( "^3!help: ^7help for '!%s':\n", g_admin_cmds[ i ].keyword ) );
         ADMBP( va( " ^3Function: ^7%s\n", g_admin_cmds[ i ].function ) );
         ADMBP( va( " ^3Syntax:   ^7!%s %s\n", g_admin_cmds[ i ].keyword, g_admin_cmds[ i ].syntax ) );
-        ADMBP( va( " ^3Flag:     ^7'%c'\n", g_admin_cmds[ i ].flag ) );
+        ADMBP( va( " ^3Flag:     ^7'%s'\n", g_admin_cmds[ i ].flag ) );
         ADMBP_end();
         return qtrue;
       }
@@ -4339,7 +4335,7 @@ qboolean G_admin_register(gentity_t *ent, int skiparg ){
     return qfalse;
   }
 
-  trap_SendConsoleCommand( EXEC_APPEND,va( "!setlevel %d %d;",ent - g_entities, level) );
+  trap_SendConsoleCommand( EXEC_APPEND,va( "!setlevel %ld %d;",ent - g_entities, level) );
   
   AP( va( "print \"^3!register: ^7%s^7 is now a protected nickname.\n\"", ent->client->pers.netname) );
   
@@ -5264,7 +5260,7 @@ qboolean G_admin_revert( gentity_t *ent, int skiparg )
               Com_sprintf( argbuf, sizeof argbuf, "%s%s%s%s%s%s%s!",
                   ( repeat > 1 ) ? "x" : "", ( repeat > 1 ) ? va( "%d ", repeat ) : "",
                   ( ID ) ? "#" : "", ( ID ) ? va( "%d ", ptr->ID ) : "",
-                  ( builder ) ? "-" : "", ( builder ) ? va( "%d ", builder - g_entities ) : "", 
+                  ( builder ) ? "-" : "", ( builder ) ? va( "%ld ", builder - g_entities ) : "", 
                   ( team == PTE_ALIENS ) ? "a " : ( team == PTE_HUMANS ) ? "h " : "" );
               ADMP( va( "^3!revert: ^7revert aborted: reverting this %s would conflict with "
                   "another buildable, use ^3!revert %s ^7to override\n", action, argbuf ) );
@@ -5320,7 +5316,7 @@ qboolean G_admin_revert( gentity_t *ent, int skiparg )
           Com_sprintf( argbuf, sizeof argbuf, "%s%s%s%s%s%s%s!",
               ( repeat > 1 ) ? "x" : "", ( repeat > 1 ) ? va( "%d ", repeat ) : "",
               ( ID ) ? "#" : "", ( ID ) ? va( "%d ", ptr->ID ) : "",
-              ( builder ) ? "-" : "", ( builder ) ? va( "%d ", builder - g_entities ) : "", 
+              ( builder ) ? "-" : "", ( builder ) ? va( "%ld ", builder - g_entities ) : "", 
               ( team == PTE_ALIENS ) ? "a " : ( team == PTE_HUMANS ) ? "h " : "" );
           ADMP( va( "^3!revert: ^7revert aborted: reverting this %s would "
               "conflict with another buildable, use ^3!revert %s ^7to override\n",
@@ -5738,7 +5734,7 @@ void G_admin_adminlog_log( gentity_t *ent, char *command, int skiparg, qboolean 
   else
     adminlog = G_Alloc( sizeof( g_admin_adminlog_t ) );
 
-  memset( adminlog, 0, sizeof( adminlog ) );
+  memset( adminlog, 0, sizeof( *adminlog ) );
   adminlog->id = count;
   adminlog->time = level.time - level.startTime;
   adminlog->success = success;
@@ -5829,7 +5825,7 @@ qboolean G_admin_adminlog( gentity_t *ent, int skiparg )
         id = 1;
       for( i = 0; i < MAX_ADMIN_ADMINLOGS; i++ )
       {
-        if( g_admin_adminlog[ i ]->id == id )
+        if( g_admin_adminlog[i] && g_admin_adminlog[ i ]->id == id )
         {
           index = i;
           break;
@@ -5930,7 +5926,7 @@ qboolean G_admin_adminlog( gentity_t *ent, int skiparg )
 
     t = results[ i ]->time / 1000;
     G_DecolorString( results[ i ]->name, n1 );
-    Com_sprintf( fmt_name, sizeof( fmt_name ), "%%%ds", 
+    Com_sprintf( fmt_name, sizeof( fmt_name ), "%%%lus", 
       ( name_length + strlen( results[ i ]->name ) - strlen( n1 ) ) );
     Com_sprintf( n1, sizeof( n1 ), fmt_name, results[ i ]->name );
     Com_sprintf( levelbuf, sizeof( levelbuf ), "%2d", results[ i ]->level );
@@ -5970,4 +5966,3 @@ qboolean G_admin_adminlog( gentity_t *ent, int skiparg )
 
   return qtrue;
 }
-

@@ -236,7 +236,7 @@ static void G_ClientShove( gentity_t *ent, gentity_t *victim )
   VectorNormalizeFast( dir );
 
   // don't break the dretch elevator
-  if( abs( dir[ 2 ] ) > abs( dir[ 0 ] ) && abs( dir[ 2 ] ) > abs( dir[ 1 ] ) )
+  if( fabs( dir[ 2 ] ) > fabs( dir[ 0 ] ) && fabs( dir[ 2 ] ) > fabs( dir[ 1 ] ) )
     return;
 
   VectorScale( dir,
@@ -570,7 +570,7 @@ void ClientTimerActions( gentity_t *ent, int msec )
   int       aForward, aRight;
   qboolean  walking = qfalse, stopped = qfalse,
             crouched = qfalse, jumping = qfalse,
-            strafing = qfalse;
+            strafing = qfalse, jetting = qfalse;
 
   ucmd = &ent->client->pers.cmd;
 
@@ -603,8 +603,10 @@ void ClientTimerActions( gentity_t *ent, int msec )
     if( walking || stopped )
       client->ps.stats[ STAT_STATE ] &= ~SS_SPEEDBOOST;
 
-    if( BG_InventoryContainsUpgrade( UP_JETPACK, client->ps.stats ) && BG_UpgradeIsActive( UP_JETPACK, client->ps.stats ) )
+    if( BG_InventoryContainsUpgrade( UP_JETPACK, client->ps.stats ) && BG_UpgradeIsActive( UP_JETPACK, client->ps.stats ) ) {
+      jetting = qtrue;
       client->ps.stats[ STAT_STATE ] &= ~SS_SPEEDBOOST;
+    }
 
     if( ( client->ps.stats[ STAT_STATE ] & SS_SPEEDBOOST ) && !crouched )
     {
@@ -618,18 +620,15 @@ void ClientTimerActions( gentity_t *ent, int msec )
         client->ps.stats[ STAT_STAMINA ] = -MAX_STAMINA;
     }
 
-    if( walking || crouched )
-    {
-      //restore stamina
-      client->ps.stats[ STAT_STAMINA ] += STAMINA_WALK_RESTORE;
+    if( stopped || jetting ) {
+      //restore stamina faster
+      client->ps.stats[ STAT_STAMINA ] += STAMINA_STOP_RESTORE;
 
       if( client->ps.stats[ STAT_STAMINA ] > MAX_STAMINA )
         client->ps.stats[ STAT_STAMINA ] = MAX_STAMINA;
-    }
-    else if( stopped )
-    {
-      //restore stamina faster
-      client->ps.stats[ STAT_STAMINA ] += STAMINA_STOP_RESTORE;
+    } else if( walking || crouched ) {
+      //restore stamina
+      client->ps.stats[ STAT_STAMINA ] += STAMINA_WALK_RESTORE;
 
       if( client->ps.stats[ STAT_STAMINA ] > MAX_STAMINA )
         client->ps.stats[ STAT_STAMINA ] = MAX_STAMINA;
@@ -721,7 +720,7 @@ void ClientTimerActions( gentity_t *ent, int msec )
     {
       int ammo;
 
-      BG_UnpackAmmoArray( WP_LUCIFER_CANNON, client->ps.ammo, client->ps.powerups, &ammo, NULL );
+      ammo = client->ps.ammo;
 
       if( client->ps.stats[ STAT_MISC ] < LCANNON_TOTAL_CHARGE && ucmd->buttons & BUTTON_ATTACK )
         client->ps.stats[ STAT_MISC ] += ( 100.0f / LCANNON_CHARGE_TIME ) * LCANNON_TOTAL_CHARGE;
@@ -940,12 +939,13 @@ void ClientTimerActions( gentity_t *ent, int msec )
       int ammo, maxAmmo;
 
       BG_FindAmmoForWeapon( WP_ALEVEL3_UPG, &maxAmmo, NULL );
-      BG_UnpackAmmoArray( WP_ALEVEL3_UPG, client->ps.ammo, client->ps.powerups, &ammo, NULL );
+      ammo = client->ps.ammo;
 
       if( ammo < maxAmmo )
       {
         ammo++;
-        BG_PackAmmoArray( WP_ALEVEL3_UPG, client->ps.ammo, client->ps.powerups, ammo, 0 );
+        client->ps.ammo = ammo;
+        client->ps.clips = 0;
       }
     }
   }
@@ -1990,5 +1990,3 @@ void ClientEndFrame( gentity_t *ent )
 
   SendPendingPredictableEvents( &ent->client->ps );
 }
-
-

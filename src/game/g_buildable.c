@@ -930,6 +930,81 @@ void ABarricade_Blast( gentity_t *self )
 
 /*
 ================
+ABarricade_Shrink
+
+Set shrink state for a barricade. When unshrinking, checks to make sure there
+is enough room.
+================
+*/
+void ABarricade_Shrink( gentity_t *self, qboolean shrink )
+{
+  if ( !self->spawned || self->health <= 0 )
+    shrink = qtrue;
+  if ( shrink && self->shrunkTime )
+  {
+    int anim;
+
+    // We need to make sure that the animation has been set to shrunk mode
+    // because we start out shrunk but with the construct animation when built
+    self->shrunkTime = level.time;
+    anim = self->s.torsoAnim & ~( ANIM_FORCEBIT | ANIM_TOGGLEBIT );
+    if ( self->spawned && self->health > 0 && anim != BANIM_DESTROYED )
+    {
+      G_SetIdleBuildableAnim( self, BANIM_DESTROYED );
+      G_SetBuildableAnim( self, BANIM_ATTACK1, qtrue );
+    }
+    return;
+  }
+
+  if ( !shrink && ( !self->shrunkTime ||
+       level.time < self->shrunkTime + BARRICADE_SHRINKTIMEOUT ) )
+    return;
+
+  BG_FindBBoxForBuildable( BA_A_BARRICADE, self->r.mins, self->r.maxs );
+
+  if ( shrink )
+  {
+    self->r.maxs[ 2 ] = (int)( self->r.maxs[ 2 ] * BARRICADE_SHRINKPROP );
+    self->shrunkTime = level.time;
+
+    // shrink animation, the destroy animation is used
+    if ( self->spawned && self->health > 0 )
+    {
+      G_SetBuildableAnim( self, BANIM_ATTACK1, qtrue );
+      G_SetIdleBuildableAnim( self, BANIM_DESTROYED );
+    }
+  }
+  else
+  {
+    trace_t tr;
+    int anim;
+
+    trap_Trace( &tr, self->r.currentOrigin, self->r.mins, self->r.maxs,
+                self->r.currentOrigin, self->s.number, MASK_PLAYERSOLID );
+    if ( tr.startsolid || tr.fraction < 1.0f )
+    {
+      self->r.maxs[ 2 ] = (int)( self->r.maxs[ 2 ] * BARRICADE_SHRINKPROP );
+      return;
+    }
+    self->shrunkTime = 0;
+
+    // unshrink animation, IDLE2 has been hijacked for this
+    anim = self->s.legsAnim & ~( ANIM_FORCEBIT | ANIM_TOGGLEBIT );
+    if ( self->spawned && self->health > 0 &&
+         anim != BANIM_CONSTRUCT1 && anim != BANIM_CONSTRUCT2 )
+    {
+      G_SetIdleBuildableAnim( self, BG_FindAnimForBuildable( BA_A_BARRICADE ) );
+      G_SetBuildableAnim( self, BANIM_ATTACK2, qtrue );
+    }
+  }
+
+  // a change in size requires a relink
+  if ( self->spawned )
+    trap_LinkEntity( self );
+}
+
+/*
+================
 ABarricade_Die
 
 Called when an alien spawn dies
@@ -960,6 +1035,8 @@ void ABarricade_Die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker,
   self->die = nullDieFunction;
   self->think = ABarricade_Blast;
   self->s.eFlags &= ~EF_FIRING; //prevent any firing effects
+
+  ABarricade_Shrink( self, qtrue );
 
   if( self->spawned )
     self->nextthink = level.time + 5000;
@@ -1008,10 +1085,40 @@ void ABarricade_Think( gentity_t *self )
   G_CreepSlow( self );
 
   self->nextthink = level.time + BG_FindNextThinkForBuildable( self->s.modelindex );
+
+  // Shrink if unpowered
+  ABarricade_Shrink( self, !self->powered );
 }
 
 
 
+
+/*
+================
+ABarricade_Touch
+
+Barricades shrink when they are come into contact with an Alien that can
+pass through
+================
+*/
+
+void ABarricade_Touch( gentity_t *self, gentity_t *other, trace_t *trace )
+{
+  gclient_t *client = other->client;
+  int client_z, min_z;
+
+  if( !client || client->pers.teamSelection != PTE_ALIENS )
+    return;
+
+  // Client must be high enough to pass over. Note that STEPSIZE (18) is
+  // hardcoded here because we don't include bg_local.h!
+  client_z = other->r.currentOrigin[ 2 ] + other->r.mins[ 2 ];
+  min_z = self->r.currentOrigin[ 2 ] - 18 +
+          (int)( self->r.maxs[ 2 ] * BARRICADE_SHRINKPROP );
+  if( client_z < min_z )
+    return;
+  ABarricade_Shrink( self, qtrue );
+}
 
 //==================================================================================
 
@@ -1509,15 +1616,8 @@ void ABooster_Touch( gentity_t *self, gentity_t *other, trace_t *trace )
   if( client && client->ps.stats[ STAT_PTEAM ] == PTE_HUMANS )
     return;
 
-  //only allow boostage once every 30 seconds
-  if( client->lastBoostedTime + BOOSTER_INTERVAL > level.time )
-    return;
-
-  if( !( client->ps.stats[ STAT_STATE ] & SS_BOOSTED ) )
-  {
-    client->ps.stats[ STAT_STATE ] |= SS_BOOSTED;
-    client->lastBoostedTime = level.time;
-  }
+  client->ps.stats[ STAT_STATE ] |= SS_BOOSTED;
+  client->lastBoostedTime = level.time;
 }
 
 
@@ -1967,7 +2067,9 @@ void HMedistat_Think( gentity_t *self )
 
         if( player->client && player->client->ps.stats[ STAT_PTEAM ] == PTE_HUMANS )
         {
-          if( player->health < player->client->ps.stats[ STAT_MAX_HEALTH ] &&
+          if( ( 
+                player->health < player->client->ps.stats[ STAT_MAX_HEALTH ] ||
+                player->client->ps.stats[ STAT_STAMINA ] < MAX_STAMINA ) &&
               player->client->ps.pm_type != PM_DEAD )
           {
             self->enemy = player;
@@ -1995,6 +2097,12 @@ void HMedistat_Think( gentity_t *self )
     }
     else if( self->enemy ) //heal!
     {
+      if( self->enemy->client->ps.stats[ STAT_STAMINA ] <  MAX_STAMINA )
+        self->enemy->client->ps.stats[ STAT_STAMINA ] += STAMINA_MEDISTAT_RESTORE;
+
+      if( self->enemy->client->ps.stats[ STAT_STAMINA ] > MAX_STAMINA )
+        self->enemy->client->ps.stats[ STAT_STAMINA ] = MAX_STAMINA;
+
       if( self->enemy->client && self->enemy->client->ps.stats[ STAT_STATE ] & SS_POISONED )
         self->enemy->client->ps.stats[ STAT_STATE ] &= ~SS_POISONED;
 
@@ -2002,11 +2110,12 @@ void HMedistat_Think( gentity_t *self )
         self->enemy->client->ps.stats[ STAT_STATE ] &= ~SS_MEDKIT_ACTIVE;
 
       self->enemy->health++;
-
-      //if they're completely healed, give them a medkit
-      if( self->enemy->health >= self->enemy->client->ps.stats[ STAT_MAX_HEALTH ] &&
-          !BG_InventoryContainsUpgrade( UP_MEDKIT, self->enemy->client->ps.stats ) )
-        BG_AddUpgradeToInventory( UP_MEDKIT, self->enemy->client->ps.stats );
+      if(self->enemy->health >= self->enemy->client->ps.stats[ STAT_MAX_HEALTH ] ) {
+        self->enemy->health = self->enemy->client->ps.stats[ STAT_MAX_HEALTH ];
+        //if they're completely healed, give them a medkit
+        if( !BG_InventoryContainsUpgrade( UP_MEDKIT, self->enemy->client->ps.stats ) )
+          BG_AddUpgradeToInventory( UP_MEDKIT, self->enemy->client->ps.stats );
+      }
     }
   }
 }
@@ -2093,8 +2202,8 @@ qboolean HMGTurret_TrackEnemy( gentity_t *self )
   vectoangles( dirToTarget, self->turretAim );
 
   //if pointing at our target return true
-  if( abs( angleToTarget[ YAW ] - self->s.angles2[ YAW ] ) <= accuracyTolerance &&
-      abs( angleToTarget[ PITCH ] - self->s.angles2[ PITCH ] ) <= accuracyTolerance )
+  if( fabs( angleToTarget[ YAW ] - self->s.angles2[ YAW ] ) <= accuracyTolerance &&
+      fabs( angleToTarget[ PITCH ] - self->s.angles2[ PITCH ] ) <= accuracyTolerance )
     return qtrue;
 
   return qfalse;
@@ -3485,6 +3594,9 @@ static gentity_t *G_Build( gentity_t *builder, buildable_t buildable, vec3_t ori
       built->die = ABarricade_Die;
       built->think = ABarricade_Think;
       built->pain = ABarricade_Pain;
+      built->touch = ABarricade_Touch;
+      built->shrunkTime = 0;
+      ABarricade_Shrink( built, qtrue );
       break;
 
     case BA_A_BOOSTER:
@@ -4565,7 +4677,6 @@ void G_NobuildLoad( void )
   vec3_t origin = { 0.0f, 0.0f, 0.0f };
   char line[ MAX_STRING_CHARS ];
   int i = 0;
-  int i2;
   gentity_t *nb;
   float area;
   float height;

@@ -216,6 +216,7 @@ struct gentity_s
   gentity_t         *overmindNode;      // controlling overmind
   qboolean          dcced;              // controlled by a dcc or not?
   qboolean          spawned;            // whether or not this buildable has finished spawning
+  int               shrunkTime;         // time when a barricade shrunk or zero
   int               buildTime;          // when this buildable was built
   int               animTime;           // last animation change
   int               time1000;           // timer evaluated every second
@@ -1190,7 +1191,7 @@ void G_WriteSessionData( void );
 //
 // g_maprotation.c
 //
-#define MAX_MAP_ROTATIONS       16
+#define MAX_MAP_ROTATIONS       64
 #define MAX_MAP_ROTATION_MAPS   64
 #define MAX_MAP_COMMANDS        16
 #define MAX_MAP_ROTATION_CONDS  8
@@ -1498,4 +1499,3 @@ qboolean  trap_GetEntityToken( char *buffer, int bufferSize );
 
 void      trap_SnapVector( float *v );
 void      trap_SendGameStat( const char *data );
-void      trap_DemoCommand( demoCommand_t cmd, const char *string );
